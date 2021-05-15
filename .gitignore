@@ -1,3 +1,15 @@
+<<<<<<< HEAD
+=======
+# Ignore .metadata folder
+.metadata
+
+# Ignore Eclipse configuration file
+*.project
+*.classpath
+*.settings
+*/.gitignore
+
+>>>>>>> 2ef99e3 (Add file .gitignore)
 # Compiled class file
 *.class
 
