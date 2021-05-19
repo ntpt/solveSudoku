@@ -9,11 +9,12 @@ import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
+
 	private static final int SIZE = 9;
 
 	private static Scanner sc = new Scanner(System.in);
-	private static int[][] grid = new int[SIZE][SIZE];
-	
+	private static int[][] grid = new int[9][9];
+
 	private static int invalidRow;
 	private static int invalidCol;
 
@@ -38,30 +39,24 @@ public class Main {
 
 		switch (choice) {
 		case 1:
-			if (inputData(false) == false) {
-				System.out.println("Invalid input at (r,c): " + invalidRow + "," + invalidCol);
-				break;
-			}
-			
-			boolean isSolved = solveSudoku(false);
-			if (isSolved) {
-				showResult();
-			} else {
-				System.out.println("Cannot solve this sudoku");
+			if (inputData(false) == true) {
+				boolean isSolved = solveSudoku(false);
+				if (isSolved) {
+					showResult();
+				} else {
+					System.out.println("Cannot solve this sudoku");
+				}
 			}
 
 			break;
 		case 2:
-			if (inputData(true) == false) {
-				System.out.println("Invalid input at (r,c): " + invalidRow + "," + invalidCol);
-				break;
-			}
-			
-			isSolved = solveSudoku(true);
-			if (isSolved) {
-				showResult();
-			} else {
-				System.out.println("Cannot solve this sudoku");
+			if (inputData(true) == true) {
+				boolean isSolved = solveSudoku(true);
+				if (isSolved) {
+					showResult();
+				} else {
+					System.out.println("Cannot solve this sudoku");
+				}
 			}
 			break;
 		case 3:
@@ -69,33 +64,121 @@ public class Main {
 			break;
 		}
 	}
-	
-	private static boolean inputData(boolean isCheckDiagonal) throws IOException {
-		String filename;
 
-		sc.nextLine(); // clear cache data
-		
+	private static boolean inputData(boolean isCheckDiagonal) throws IOException {
+		String input;
+		sc.nextLine();
+
 		do {
 			System.out.print("Enter filename to open: ");
-			filename = sc.nextLine();
-			
-			if (!checkFilenameExist(filename)) {
+			input = sc.nextLine();
+
+			if (!checkFilenameExist(input)) {
 				System.out.println("Invalid filename! Try again");
 			} else {
 				break;
 			}
 		} while (true);
+		readFileInput(input);
 		
-		fileReaderDemo(filename);
-		
-		return readFileToGrid(filename) && checkInputData(isCheckDiagonal);
+		if (inputDataToGrid(input) && checkInputData(isCheckDiagonal)) {
+			return true;
+		} else {
+			System.out.println("Invalid input at (r,c): " + invalidRow + "," + invalidCol);
+			return false;
+		}
+	}
+	
+	private static boolean inputDataToGrid(String filename) {
+		File file = new File(filename);
+		BufferedReader reader = null;
+
+		try {
+			reader = new BufferedReader(new FileReader(file));
+			String line = null;
+			int rowIndex = 0;
+
+			while ((line = reader.readLine()) != null) {
+				if (line.trim().isEmpty()) {
+					continue;
+				}
+				
+				if (rowIndex == 9) {
+					invalidRow = 9;
+					invalidCol = 0;
+					return false;
+				}
+
+				String[] strs = line.trim().split("\\s+");
+				if (strs.length != 9) {
+					invalidRow = rowIndex;
+					invalidCol = 9;
+					return false;
+				}
+
+				int i = 0;
+				try {
+					for (i = 0; i < 9; i++) {
+						grid[rowIndex][i] = Integer.parseInt(strs[i]);
+					}
+				} catch (NumberFormatException e) {
+					invalidRow = rowIndex;
+					invalidCol = i;
+					return false;
+				}
+
+				rowIndex++;
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (reader != null) {
+					reader.close();
+				}
+			} catch (IOException e) {
+			}
+		}
+		return true;
+	}
+	
+	private static boolean checkInputData(boolean isCheckDiagonal) {
+		for (int i = 0; i < SIZE; i++) {
+			for (int j = 0; j < SIZE; j++) {
+				final int number = grid[i][j];
+				if (number < 0 || number > 9) {
+					invalidRow = i;
+					invalidCol = j;
+					return false;
+				}
+
+				if (number != 0) {
+					if (!checkRow(i, j) || !checkCol(i, j) || !checkSquare(i, j)) {
+						invalidRow = i;
+						invalidCol = j;
+						return false;
+					}
+
+					if (isCheckDiagonal && !checkDiagonal(i, j)) {
+						invalidRow = i;
+						invalidCol = j;
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	private static void showResult() {
-		System.out.println("Result: ");
+		System.out.println("====Result=====");
 		for (int[] row : grid) {
 			for (int number : row) {
 				System.out.print(number + " ");
+
 			}
 
 			System.out.println();
@@ -103,6 +186,7 @@ public class Main {
 	}
 
 	private static boolean solveSudoku(boolean isCheckDiagonal) {
+
 		int[] availableSquare = findUnassignedLocation();
 		if (availableSquare == null) {
 			return true;
@@ -112,13 +196,17 @@ public class Main {
 		int avaiableCol = availableSquare[1];
 
 		for (int number = 1; number <= 9; number++) {
-			if (isPossible(avaiableRow, avaiableCol, number, isCheckDiagonal)) {
+			if (isPossible(avaiableRow, avaiableCol, number, isCheckDiagonal)) { // 1, 2, 3
 				grid[avaiableRow][avaiableCol] = number;
-				if (solveSudoku(isCheckDiagonal))
-					return true;
 
-				grid[avaiableRow][avaiableCol] = 0;
+				showResult();
+
+				if (solveSudoku(isCheckDiagonal)) {
+					return true;
+				}
+
 			}
+			grid[avaiableRow][avaiableCol] = 0;
 		}
 
 		return false;
@@ -128,7 +216,6 @@ public class Main {
 		grid[avaiableRow][avaiableCol] = number;
 		if (!checkRow(avaiableRow, avaiableCol) || !checkCol(avaiableRow, avaiableCol)
 				|| !checkSquare(avaiableRow, avaiableCol)) {
-			grid[avaiableRow][avaiableCol] = 0;
 			return false;
 		}
 
@@ -150,8 +237,6 @@ public class Main {
 
 		return null;
 	}
-
-	
 
 	private static boolean checkFilenameExist(String inputFilename) {
 		File file = new File(inputFilename);
@@ -218,93 +303,18 @@ public class Main {
 		return true;
 	}
 
-	private static boolean checkInputData(boolean isCheckDiagonal) {
-		for (int i = 0; i < SIZE; i++) {
-			for (int j = 0; j < SIZE; j++) {
-				final int number = grid[i][j];
-				if (number < 0 || number > 9) {
-					invalidRow = i;
-					invalidCol = j;
-					return false;
-				}
+	private static void readFileInput(String a) throws IOException {
 
-				if (number != 0) {
-					if (!checkRow(i, j) || !checkCol(i, j) || !checkSquare(i, j)) {
-						invalidRow = i;
-						invalidCol = j;
-						return false;
-					}
+		FileReader fr = new FileReader(a);
+		BufferedReader br = new BufferedReader(fr);
 
-					if (isCheckDiagonal && !checkDiagonal(i, j)) {
-						invalidRow = i;
-						invalidCol = j;
-						return false;
-					}
-				}
-			}
+		System.out.println("Data input");
+
+		String s;
+		while ((s = br.readLine()) != null && !s.isEmpty()) {
+			System.out.println(s);
 		}
+		fr.close();
 
-		return true;
-	}
-
-	private static boolean readFileToGrid(String filename) {
-		File file = new File(filename);
-		BufferedReader reader = null;
-
-		try {
-			reader = new BufferedReader(new FileReader(file));
-			String line = null;
-			int rowIndex = 0;
-
-			while ((line = reader.readLine()) != null) {
-				if (rowIndex == SIZE) {
-					return false;
-				}
-
-				String[] numbers = line.trim().split("\\s+");
-				if (numbers.length != SIZE) {
-					return false;
-				}
-
-				try {
-					for (int i = 0; i < 9; i++) {
-						grid[rowIndex][i] = Integer.parseInt(numbers[i]);
-					}
-				} catch (Exception e) {
-					System.out.println("Has another character not a number in line!");
-					return false;
-				}
-
-				rowIndex++;
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (reader != null) {
-					reader.close();
-				}
-			} catch (IOException e) {
-			}
-		}
-		return false;
-	}
-	
-	private static  void fileReaderDemo(String a) throws IOException {
-			FileReader fr = new FileReader(a);
-			BufferedReader br = new BufferedReader(fr);
-			
-			String s;
-			System.out.println("Data from input file");
-			while((s = br.readLine()) !=null && !s.isEmpty()) {
-				System.out.println(s);
-			}
-			fr.close();	
-			System.out.println();
 	}
 }
-
-
-
